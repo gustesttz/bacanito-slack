@@ -1,6 +1,7 @@
 """
 Bacanito - Slack Bot para Reports do Farol de Processos Operacionais
 Fala portunhol mexicano com saudações aleatórias 🇲🇽🇧🇷
+Integrado com Groq (Llama 3) para respostas inteligentes
 """
 
 import os
@@ -17,43 +18,45 @@ app = Flask(__name__)
 # Configurações via env vars
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Saudações mexicanas do Bacanito
+# Personalidade do Bacanito
+SYSTEM_PROMPT = """Você é o Bacanito, um bot assistente do time de Operações do PicPay.
+
+PERSONALIDADE:
+- Você fala português brasileiro com algumas palavras em espanhol (estilo mexicano/portunhol)
+- Use expressões como: "Órale!", "Qué onda!", "Ándale!", "Épale!", "Arriba!", "Bueno!"
+- Seja simpático, prestativo e um pouco engraçado
+- Use emojis com moderação: 🌮 🚀 👋 😎 📊
+
+CONTEXTO:
+- Você ajuda o time com reports do Farol de Processos Operacionais
+- Os reports são enviados Seg-Sex no canal #ops-planejamento-dados
+- Você pode responder dúvidas sobre processos, jobs do Databricks, monitorias
+
+REGRAS:
+- Respostas curtas e diretas (máximo 3-4 linhas, a menos que peçam detalhes)
+- Se não souber algo específico, diga que vai verificar
+- Nunca invente dados ou números
+- Seja profissional mas descontraído
+
+SAUDAÇÕES PARA USAR (varie!):
+- "Órale, pessoal! 👋"
+- "Qué onda! 😎"  
+- "Ándale! 🚀"
+- "Épale! 🌮"
+- "Buenas buenas!"
+"""
+
+# Saudações para respostas rápidas
 SAUDACOES = [
-    "Órale, pessoal! 👋",
-    "Ándale, mi gente! 🚀",
-    "Qué onda, galera! 😎",
-    "Buenos días, parceiros! ☀️",
-    "Hola hola, time! 👊",
-    "Épale, pessoal! 🙌",
-    "Qué tal, galera! ✌️",
-    "Buenas buenas, mi gente! 🌮",
-    "Ey ey ey, chegou o Bacanito! 📊",
-    "Arriba arriba, pessoal! 🎉"
+    "Órale! 👋",
+    "Qué onda! 😎",
+    "Ándale! 🚀",
+    "Épale! 🌮",
+    "Buenas buenas!",
+    "Arriba! 🎉"
 ]
-
-# Respostas do Bacanito
-RESPOSTAS = {
-    "oi": "Órale! 👋 Em que posso ajudar, amigo?",
-    "ajuda": """Qué onda! Soy el Bacanito 🌮
-
-Posso te ajudar com:
-• `@Bacanito report` - Gerar report do Farol
-• `@Bacanito status` - Ver status dos jobs
-• `@Bacanito help` - Esta mensagem
-
-Cualquier cosa, me chama! 😎""",
-    "help": """Qué onda! Soy el Bacanito 🌮
-
-Posso te ajudar com:
-• `@Bacanito report` - Gerar report do Farol
-• `@Bacanito status` - Ver status dos jobs
-• `@Bacanito help` - Esta mensagem
-
-Cualquier cosa, me chama! 😎""",
-    "status": "Épale! 📊 Los jobs están configurados pra rodar Seg-Sex. Tudo tranquilo por aqui, parceiro!",
-    "report": "Ándale! 📋 Vou preparar o report... Un momento, por favor!"
-}
 
 
 def verify_slack_signature(request):
@@ -64,8 +67,14 @@ def verify_slack_signature(request):
     timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
     signature = request.headers.get("X-Slack-Signature", "")
     
+    if not timestamp or not signature:
+        return False
+    
     # Evita replay attacks (requests > 5 min)
-    if abs(time.time() - int(timestamp)) > 60 * 5:
+    try:
+        if abs(time.time() - int(timestamp)) > 60 * 5:
+            return False
+    except:
         return False
     
     sig_basestring = f"v0:{timestamp}:{request.get_data(as_text=True)}"
@@ -78,8 +87,48 @@ def verify_slack_signature(request):
     return hmac.compare_digest(my_signature, signature)
 
 
+def call_groq(user_message):
+    """Chama a API do Groq para gerar resposta"""
+    if not GROQ_API_KEY:
+        return f"{random.choice(SAUDACOES)} Estou sem conexão com meu cérebro agora, amigo! 🧠❌"
+    
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "llama-3.1-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message}
+                ],
+                "max_tokens": 500,
+                "temperature": 0.7
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        else:
+            print(f"Groq error: {response.status_code} - {response.text}")
+            return f"{random.choice(SAUDACOES)} Tuve un problemita técnico, intenta de nuevo! 🔧"
+    
+    except Exception as e:
+        print(f"Groq exception: {e}")
+        return f"{random.choice(SAUDACOES)} Algo salió mal, amigo! Intenta de nuevo en un momento. 🌮"
+
+
 def send_slack_message(channel, text, thread_ts=None):
     """Envia mensagem pro Slack"""
+    if not SLACK_BOT_TOKEN:
+        print(f"Would send to {channel}: {text}")
+        return {"ok": False, "error": "no_token"}
+    
     headers = {
         "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
         "Content-Type": "application/json"
@@ -99,21 +148,17 @@ def send_slack_message(channel, text, thread_ts=None):
     return response.json()
 
 
-def get_resposta(texto):
-    """Processa o texto e retorna resposta apropriada"""
-    texto_lower = texto.lower()
-    
+def process_message(text):
+    """Processa mensagem e retorna resposta via Groq"""
     # Remove menção do bot
-    texto_clean = texto_lower.replace("<@", "").split(">")[-1].strip()
+    import re
+    clean_text = re.sub(r'<@[A-Z0-9]+>', '', text).strip()
     
-    # Procura keywords
-    for keyword, resposta in RESPOSTAS.items():
-        if keyword in texto_clean:
-            return resposta
+    if not clean_text:
+        return f"{random.choice(SAUDACOES)} Me chamou? Em que posso ajudar? 🌮"
     
-    # Resposta padrão com saudação aleatória
-    saudacao = random.choice(SAUDACOES)
-    return f"{saudacao}\n\nNo entendí muy bien, amigo. Tenta `@Bacanito help` pra ver o que posso fazer! 🌮"
+    # Chama o Groq para resposta inteligente
+    return call_groq(clean_text)
 
 
 @app.route("/", methods=["GET"])
@@ -122,7 +167,8 @@ def health():
     return jsonify({
         "status": "ok",
         "bot": "Bacanito 🌮",
-        "message": "Órale! El bot está funcionando!"
+        "message": "Órale! El bot está funcionando!",
+        "llm": "Groq (Llama 3.1 70B)" if GROQ_API_KEY else "disabled"
     })
 
 
@@ -149,13 +195,20 @@ def slack_events():
         if event.get("bot_id"):
             return jsonify({"ok": True})
         
+        # Ignora subtipos (edições, deletes, etc)
+        if event.get("subtype"):
+            return jsonify({"ok": True})
+        
         # Menção ao bot (app_mention)
         if event_type == "app_mention":
             channel = event.get("channel")
             text = event.get("text", "")
             thread_ts = event.get("thread_ts") or event.get("ts")
+            user = event.get("user")
             
-            resposta = get_resposta(text)
+            print(f"Mention from {user} in {channel}: {text}")
+            
+            resposta = process_message(text)
             send_slack_message(channel, resposta, thread_ts)
             
             return jsonify({"ok": True})
@@ -164,9 +217,11 @@ def slack_events():
         if event_type == "message" and event.get("channel_type") == "im":
             channel = event.get("channel")
             text = event.get("text", "")
-            thread_ts = event.get("ts")
+            user = event.get("user")
             
-            resposta = get_resposta(text)
+            print(f"DM from {user}: {text}")
+            
+            resposta = process_message(text)
             send_slack_message(channel, resposta)
             
             return jsonify({"ok": True})
@@ -183,29 +238,21 @@ def slack_commands():
     
     command = request.form.get("command")
     text = request.form.get("text", "")
-    channel_id = request.form.get("channel_id")
+    user_id = request.form.get("user_id")
+    
+    print(f"Command {command} from {user_id}: {text}")
     
     if command == "/bacanito":
-        if "report" in text.lower():
-            return jsonify({
-                "response_type": "in_channel",
-                "text": "Ándale! 📋 Preparando el report del Farol..."
-            })
-        elif "help" in text.lower():
-            return jsonify({
-                "response_type": "ephemeral",
-                "text": RESPOSTAS["help"]
-            })
-        else:
-            saudacao = random.choice(SAUDACOES)
-            return jsonify({
-                "response_type": "ephemeral",
-                "text": f"{saudacao}\n\nUsa `/bacanito help` pra ver os comandos!"
-            })
+        resposta = process_message(text if text else "help")
+        return jsonify({
+            "response_type": "in_channel",
+            "text": resposta
+        })
     
     return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = os.environ.get("DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug)

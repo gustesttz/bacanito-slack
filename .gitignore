@@ -1,7 +1,19 @@
+# Python
 __pycache__/
 *.py[cod]
-.env
-.venv
+*.so
+.Python
+env/
 venv/
-*.log
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
 .DS_Store
+
+# Build artifacts
+*.zip

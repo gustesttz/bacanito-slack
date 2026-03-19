@@ -20,6 +20,9 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
+# Canal autorizado para respostas automáticas
+CANAL_AUTORIZADO = "C02V74YSS5U"  # #ops-planejamento-dados
+
 # Personalidade do Bacanito
 SYSTEM_PROMPT = """Você é o Bacanito, um bot assistente do time de Operações do PicPay.
 
@@ -208,22 +211,19 @@ def slack_events():
             
             print(f"Mention from {user} in {channel}: {text}")
             
+            # Só responde automaticamente no canal autorizado
+            if channel != CANAL_AUTORIZADO:
+                print(f"Ignorando menção em canal não autorizado: {channel}")
+                return jsonify({"ok": True})
+            
             resposta = process_message(text)
             send_slack_message(channel, resposta, thread_ts)
             
             return jsonify({"ok": True})
         
-        # Mensagem direta
+        # Mensagem direta - DESATIVADO (só responde no canal autorizado)
         if event_type == "message" and event.get("channel_type") == "im":
-            channel = event.get("channel")
-            text = event.get("text", "")
-            user = event.get("user")
-            
-            print(f"DM from {user}: {text}")
-            
-            resposta = process_message(text)
-            send_slack_message(channel, resposta)
-            
+            print(f"DM ignorada - bot só responde no canal #ops-planejamento-dados")
             return jsonify({"ok": True})
     
     return jsonify({"ok": True})

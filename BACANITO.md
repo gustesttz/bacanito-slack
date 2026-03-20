@@ -96,7 +96,7 @@ Original:
 
 :arrow_right: Analítico de Falhas (DD/MM)
 
-@Lah @Nicolas Fernandes @Isaias Souza @Daniel Matsuda
+<!subteam^S03DS118CMU>
 ```
 
 ### Template — Terça-feira
@@ -134,7 +134,7 @@ Pagamentos DD/MM (domingo):
 
 :arrow_right: Analítico de Falhas (DD/MM)
 
-@Lah @Nicolas Fernandes @Isaias Souza @Daniel Matsuda
+<!subteam^S03DS118CMU>
 ```
 
 ### Regras de Montagem
@@ -216,8 +216,8 @@ Vs semana anterior: +15% 📈
 
 | Assunto | Pessoa |
 |---------|--------|
-| Reports e processos | @Lah, @Nicolas Fernandes |
-| Incidentes | @Daniel Matsuda |
+| Reports e processos | <!subteam^S03DS118CMU> (@sustentacard) |
+| Incidentes | <!subteam^S03DS118CMU> (@sustentacard) |
 | Base de dados | @Daniel Viva |
 | Bot/Técnico | <@UP46AEBFC> (Gustavo) |
 
@@ -232,7 +232,7 @@ Impacto: [breve descrição]
 
 Ação necessária: [o que precisa ser feito]
 
-cc: @Lah @Nicolas Fernandes
+cc: <!subteam^S03DS118CMU>
 ```
 
 ---

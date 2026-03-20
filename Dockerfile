@@ -6,10 +6,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia código
+# Copia código e manual
 COPY app.py .
+COPY BACANITO.md .
 
-# Cloud Run usa PORT env var
+# Railway usa PORT env var
 ENV PORT=8080
 EXPOSE 8080
 

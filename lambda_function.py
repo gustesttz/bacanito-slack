@@ -1,8 +1,7 @@
 """
-Bacanitro - Slack Bot para Railway
-Fala portunhol mexicano com saudações aleatórias 🇲🇽🇧🇷⚡
+Bacanito - Slack Bot para AWS Lambda
+Fala portunhol mexicano com saudações aleatórias 🇲🇽🇧🇷
 Integrado com Groq (Llama 3) para respostas inteligentes
-Time: Dados e Planejamento
 """
 
 import os
@@ -13,9 +12,7 @@ import hashlib
 import time
 import re
 import urllib.request
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
+import urllib.parse
 
 # Configurações via env vars
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
@@ -25,22 +22,33 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 # Canal autorizado para respostas automáticas
 CANAL_AUTORIZADO = "C02V74YSS5U"  # #ops-planejamento-dados
 
-# Carrega o manual do Bacanitro como system prompt
-def load_system_prompt():
-    try:
-        with open("BACANITO.md", "r", encoding="utf-8") as f:
-            manual = f.read()
-        return f"""Você é o Bacanitro. Siga as instruções do seu manual:
+# Personalidade do Bacanito
+SYSTEM_PROMPT = """Você é o Bacanito, um bot assistente do time de Operações do PicPay.
 
-{manual}
+PERSONALIDADE:
+- Você fala português brasileiro com algumas palavras em espanhol (estilo mexicano/portunhol)
+- Use expressões como: "Órale!", "Qué onda!", "Ándale!", "Épale!", "Arriba!", "Bueno!"
+- Seja simpático, prestativo e um pouco engraçado
+- Use emojis com moderação: 🌮 🚀 👋 😎 📊
 
-IMPORTANTE: Responda sempre em português com toques de espanhol mexicano (portunhol).
+CONTEXTO:
+- Você ajuda o time com reports do Farol de Processos Operacionais
+- Os reports são enviados Seg-Sex no canal #ops-planejamento-dados
+- Você pode responder dúvidas sobre processos, jobs do Databricks, monitorias
+
+REGRAS:
+- Respostas curtas e diretas (máximo 3-4 linhas, a menos que peçam detalhes)
+- Se não souber algo específico, diga que vai verificar
+- Nunca invente dados ou números
+- Seja profissional mas descontraído
+
+SAUDAÇÕES PARA USAR (varie!):
+- "Órale, pessoal! 👋"
+- "Qué onda! 😎"  
+- "Ándale! 🚀"
+- "Épale! 🌮"
+- "Buenas buenas!"
 """
-    except:
-        return """Você é o Bacanitro, um bot assistente do time de Dados e Planejamento do PicPay.
-Fala portunhol (português + espanhol mexicano). Seja simpático e direto."""
-
-SYSTEM_PROMPT = load_system_prompt()
 
 # Saudações para respostas rápidas
 SAUDACOES = [
@@ -53,14 +61,13 @@ SAUDACOES = [
 ]
 
 
-def verify_slack_signature(req):
+def verify_slack_signature(headers, body):
     """Verifica se a request veio do Slack"""
     if not SLACK_SIGNING_SECRET:
         return True  # Skip em dev
     
-    timestamp = req.headers.get("X-Slack-Request-Timestamp", "")
-    signature = req.headers.get("X-Slack-Signature", "")
-    body = req.get_data(as_text=True)
+    timestamp = headers.get("x-slack-request-timestamp", "")
+    signature = headers.get("x-slack-signature", "")
     
     if not timestamp or not signature:
         return False
@@ -167,31 +174,56 @@ def process_message(text):
     return call_groq(clean_text)
 
 
-@app.route("/", methods=["GET"])
-def health():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "ok",
-        "bot": "Bacanito 🌮",
-        "message": "Órale! El bot está funcionando!",
-        "llm": "Groq (Llama 3.3 70B)" if GROQ_API_KEY else "disabled"
-    })
-
-
-@app.route("/slack/events", methods=["POST"])
-def slack_events():
-    """Endpoint para eventos do Slack"""
+def lambda_handler(event, context):
+    """Handler principal do Lambda"""
     
-    # Verifica assinatura
-    if not verify_slack_signature(request):
-        return jsonify({"error": "Invalid signature"}), 403
+    print(f"Event received: {json.dumps(event)}")
     
-    data = request.json
-    print(f"Event received: {json.dumps(data)}")
+    # Pega headers (lowercase no API Gateway)
+    headers = {k.lower(): v for k, v in event.get("headers", {}).items()}
+    
+    # Pega body
+    body = event.get("body", "{}")
+    if event.get("isBase64Encoded"):
+        import base64
+        body = base64.b64decode(body).decode('utf-8')
+    
+    # Health check (GET /)
+    if event.get("httpMethod") == "GET" or event.get("requestContext", {}).get("http", {}).get("method") == "GET":
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "status": "ok",
+                "bot": "Bacanito 🌮",
+                "message": "Órale! El bot está funcionando!",
+                "llm": "Groq (Llama 3.3 70B)" if GROQ_API_KEY else "disabled"
+            })
+        }
+    
+    # Verifica assinatura do Slack
+    if not verify_slack_signature(headers, body):
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"error": "Invalid signature"})
+        }
+    
+    # Parse do body
+    try:
+        data = json.loads(body)
+    except:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Invalid JSON"})
+        }
     
     # Challenge do Slack (verificação inicial)
     if data.get("type") == "url_verification":
-        return jsonify({"challenge": data.get("challenge")})
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"challenge": data.get("challenge")})
+        }
     
     # Processa eventos
     if data.get("type") == "event_callback":
@@ -200,11 +232,11 @@ def slack_events():
         
         # Ignora mensagens do próprio bot
         if event_data.get("bot_id"):
-            return jsonify({"ok": True})
+            return {"statusCode": 200, "body": json.dumps({"ok": True})}
         
         # Ignora subtipos (edições, deletes, etc)
         if event_data.get("subtype"):
-            return jsonify({"ok": True})
+            return {"statusCode": 200, "body": json.dumps({"ok": True})}
         
         # Menção ao bot (app_mention)
         if event_type == "app_mention":
@@ -218,21 +250,16 @@ def slack_events():
             # Só responde no canal autorizado
             if channel != CANAL_AUTORIZADO:
                 print(f"Ignorando menção em canal não autorizado: {channel}")
-                return jsonify({"ok": True})
+                return {"statusCode": 200, "body": json.dumps({"ok": True})}
             
             resposta = process_message(text)
             send_slack_message(channel, resposta, thread_ts)
             
-            return jsonify({"ok": True})
+            return {"statusCode": 200, "body": json.dumps({"ok": True})}
         
         # Mensagem direta - DESATIVADO
         if event_type == "message" and event_data.get("channel_type") == "im":
             print(f"DM ignorada - bot só responde no canal #ops-planejamento-dados")
-            return jsonify({"ok": True})
+            return {"statusCode": 200, "body": json.dumps({"ok": True})}
     
-    return jsonify({"ok": True})
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    return {"statusCode": 200, "body": json.dumps({"ok": True})}

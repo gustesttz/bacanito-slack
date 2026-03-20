@@ -160,7 +160,9 @@ def call_groq(user_message):
                 "temperature": 0.7
             },
             headers={
-                "Authorization": f"Bearer {GROQ_API_KEY}"
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "Bacanitro/1.0",
+                "Accept": "application/json"
             }
         )
         

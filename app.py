@@ -21,6 +21,7 @@ import hashlib
 import time
 import re
 import urllib.request
+import urllib.error
 
 print("🚀 [STARTUP] Imports básicos OK", flush=True)
 
@@ -32,10 +33,16 @@ app = Flask(__name__)
 
 print("✅ App Flask criado", flush=True)
 
-# Configurações via env vars
-SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+# Configurações via env vars (strip remove espaços/newlines acidentais)
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "").strip()
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "").strip()
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+
+# Debug: mostra primeiros/últimos chars da key pra validar
+if GROQ_API_KEY:
+    print(f"🔑 GROQ_API_KEY: {GROQ_API_KEY[:8]}...{GROQ_API_KEY[-4:]} (len={len(GROQ_API_KEY)})", flush=True)
+else:
+    print("⚠️ GROQ_API_KEY não configurada!", flush=True)
 
 # Canal autorizado para respostas automáticas
 CANAL_AUTORIZADO = "C02V74YSS5U"  # #ops-planejamento-dados
@@ -113,8 +120,18 @@ def http_request(url, data=None, headers=None):
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             return json.loads(response.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        # Captura o body do erro HTTP pra melhor debug
+        error_body = ""
+        try:
+            error_body = e.read().decode('utf-8')
+        except:
+            pass
+        print(f"❌ HTTP {e.code} Error: {e.reason}", flush=True)
+        print(f"❌ Error body: {error_body}", flush=True)
+        return None
     except Exception as e:
-        print(f"HTTP request error: {e}")
+        print(f"❌ HTTP request error: {e}", flush=True)
         return None
 
 

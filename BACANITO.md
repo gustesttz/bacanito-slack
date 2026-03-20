@@ -94,8 +94,6 @@ Original:
 * :red_circle: :originallogo: [Nome da Monitoria] • Original (DD/MM):
    * XX registros não encontrados
 
-:arrow_right: Analítico de Falhas (DD/MM)
-
 <!subteam^S03DS118CMU>
 ```
 
@@ -131,8 +129,6 @@ Pagamentos DD/MM (domingo):
 
 * :large_yellow_circle: :originallogo: [Monitoria] • Original
    * XX registros não encontrados
-
-:arrow_right: Analítico de Falhas (DD/MM)
 
 <!subteam^S03DS118CMU>
 ```

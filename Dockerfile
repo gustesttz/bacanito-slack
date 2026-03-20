@@ -2,19 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Força Python a não bufferizar stdout/stderr
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
-# Instala dependências
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Instala só Flask
+RUN pip install flask==3.0.0
 
-# Copia código e manual
-COPY app.py .
-COPY BACANITO.md .
+# App mínimo inline - nem precisa de arquivo
+RUN echo 'from flask import Flask\nimport os\napp = Flask(__name__)\n@app.route("/")\ndef health():\n    return "OK"\nif __name__ == "__main__":\n    print("STARTING...", flush=True)\n    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))' > app.py
 
-# Railway injeta PORT como env var
-EXPOSE 8080
+RUN cat app.py
 
-# Usar Python direto pra debug (Flask dev server)
-CMD python app.py
+CMD ["python", "app.py"]

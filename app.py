@@ -6,6 +6,7 @@ Time: Dados e Planejamento
 """
 
 import os
+import sys
 import json
 import random
 import hmac
@@ -13,9 +14,17 @@ import hashlib
 import time
 import re
 import urllib.request
+
+# Log de startup
+print("🚀 Bacanitro iniciando...", flush=True)
+
 from flask import Flask, request, jsonify
 
+print("✅ Flask importado", flush=True)
+
 app = Flask(__name__)
+
+print("✅ App Flask criado", flush=True)
 
 # Configurações via env vars
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
@@ -41,6 +50,8 @@ IMPORTANTE: Responda sempre em português com toques de espanhol mexicano (portu
 Fala portunhol (português + espanhol mexicano). Seja simpático e direto."""
 
 SYSTEM_PROMPT = load_system_prompt()
+
+print(f"✅ System prompt carregado ({len(SYSTEM_PROMPT)} chars)", flush=True)
 
 # Saudações para respostas rápidas
 SAUDACOES = [
@@ -233,6 +244,9 @@ def slack_events():
     return jsonify({"ok": True})
 
 
+print("✅ Rotas registradas", flush=True)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
+    print(f"🌮 Bacanitro rodando na porta {port}", flush=True)
     app.run(host="0.0.0.0", port=port, debug=True)

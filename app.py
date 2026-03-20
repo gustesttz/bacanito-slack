@@ -7,6 +7,13 @@ Time: Dados e Planejamento
 
 import os
 import sys
+
+# Força unbuffered output imediatamente
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+print("🚀 [STARTUP] Bacanitro iniciando imports...", flush=True)
+
 import json
 import random
 import hmac
@@ -15,8 +22,7 @@ import time
 import re
 import urllib.request
 
-# Log de startup
-print("🚀 Bacanitro iniciando...", flush=True)
+print("🚀 [STARTUP] Imports básicos OK", flush=True)
 
 from flask import Flask, request, jsonify
 

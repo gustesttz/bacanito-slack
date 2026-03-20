@@ -120,16 +120,23 @@ def http_request(url, data=None, headers=None):
 
 def call_groq(user_message):
     """Chama a API do Groq para gerar resposta"""
+    print(f"[GROQ] Chamando com mensagem: {user_message[:100]}...", flush=True)
+    print(f"[GROQ] API Key presente: {bool(GROQ_API_KEY)}", flush=True)
+    
     if not GROQ_API_KEY:
         return f"{random.choice(SAUDACOES)} Estou sem conexão com meu cérebro agora, amigo! 🧠❌"
     
     try:
+        # Limita o system prompt pra evitar timeout
+        system_prompt = SYSTEM_PROMPT[:4000] if len(SYSTEM_PROMPT) > 4000 else SYSTEM_PROMPT
+        print(f"[GROQ] System prompt: {len(system_prompt)} chars", flush=True)
+        
         response = http_request(
             "https://api.groq.com/openai/v1/chat/completions",
             data={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
                 ],
                 "max_tokens": 500,
@@ -140,14 +147,16 @@ def call_groq(user_message):
             }
         )
         
+        print(f"[GROQ] Response: {response}", flush=True)
+        
         if response and "choices" in response:
             return response["choices"][0]["message"]["content"]
         else:
-            print(f"Groq error: {response}")
+            print(f"[GROQ] Error - response inválido: {response}", flush=True)
             return f"{random.choice(SAUDACOES)} Tuve un problemita técnico, intenta de nuevo! 🔧"
     
     except Exception as e:
-        print(f"Groq exception: {e}")
+        print(f"[GROQ] Exception: {e}", flush=True)
         return f"{random.choice(SAUDACOES)} Algo salió mal, amigo! Intenta de nuevo en un momento. 🌮"
 
 

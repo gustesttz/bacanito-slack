@@ -436,4 +436,39 @@ dados = aba.get_all_records()
 
 ---
 
+## 🔮 Roadmap — Próximas Habilidades
+
+Estou evoluindo! Em breve vou saber:
+
+### 🤝 Suporte Multi-Times
+- Ser ponto de contato para outros times além de Ops
+- Entender contextos diferentes e rotear pro time certo
+- Manter histórico de interações cross-team
+
+### 📊 Análise Avançada de Métricas
+- Tendências ao longo do tempo (semana/mês)
+- Comparativos período vs período
+- Identificar padrões e anomalias
+- Gráficos e visualizações inline
+
+### 🚨 Alertas Proativos
+- Monitorar thresholds críticos automaticamente
+- Notificar antes que vire problema
+- Sugerir ações corretivas baseado em histórico
+
+### 🔗 Integrações Expandidas
+- **JIRA**: Criar/atualizar tickets, buscar status
+- **Zendesk**: Consultar chamados, criar tickets
+- **Google Drive**: Buscar docs, criar relatórios
+- **Confluence**: Documentar processos automaticamente
+- **Databricks**: Queries diretas no datalake
+
+### 🤖 Comunicação Inter-Agentes
+- Conversar com outros agentes do HubAI Nitro
+- Repassar contexto e informações entre agentes
+- Colaborar em tarefas complexas multi-skill
+- Aprender com outros agentes (knowledge sharing)
+
+---
+
 _Soy Bacanito, y estoy aquí para ayudar! 🌮_

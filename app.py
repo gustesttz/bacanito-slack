@@ -76,6 +76,10 @@ SAUDACOES = [
     "Arriba! 🎉"
 ]
 
+# Memória de conversas por canal (últimas 10 mensagens)
+# Estrutura: {channel_id: [(role, content), ...]}
+channel_memory = {}
+
 
 def verify_slack_signature(req):
     """Verifica se a request veio do Slack"""
@@ -135,8 +139,8 @@ def http_request(url, data=None, headers=None):
         return None
 
 
-def call_groq(user_message):
-    """Chama a API do Groq para gerar resposta"""
+def call_groq(user_message, channel_id=None):
+    """Chama a API do Groq para gerar resposta com contexto de histórico"""
     print(f"[GROQ] Chamando com mensagem: {user_message[:100]}...", flush=True)
     print(f"[GROQ] API Key presente: {bool(GROQ_API_KEY)}", flush=True)
     
@@ -148,14 +152,23 @@ def call_groq(user_message):
         system_prompt = SYSTEM_PROMPT[:4000] if len(SYSTEM_PROMPT) > 4000 else SYSTEM_PROMPT
         print(f"[GROQ] System prompt: {len(system_prompt)} chars", flush=True)
         
+        # Monta mensagens com histórico do canal
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Adiciona histórico se disponível
+        if channel_id and channel_id in channel_memory:
+            history = channel_memory[channel_id]
+            print(f"[GROQ] Incluindo {len(history)} mensagens do histórico", flush=True)
+            messages.extend([{"role": role, "content": content} for role, content in history])
+        
+        # Adiciona mensagem atual
+        messages.append({"role": "user", "content": user_message})
+        
         response = http_request(
             "https://api.groq.com/openai/v1/chat/completions",
             data={
                 "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
+                "messages": messages,
                 "max_tokens": 500,
                 "temperature": 0.7
             },
@@ -169,7 +182,23 @@ def call_groq(user_message):
         print(f"[GROQ] Response: {response}", flush=True)
         
         if response and "choices" in response:
-            return response["choices"][0]["message"]["content"]
+            bot_response = response["choices"][0]["message"]["content"]
+            
+            # Salva no histórico (user + bot)
+            if channel_id:
+                if channel_id not in channel_memory:
+                    channel_memory[channel_id] = []
+                
+                channel_memory[channel_id].append(("user", user_message))
+                channel_memory[channel_id].append(("assistant", bot_response))
+                
+                # Mantém apenas últimas 10 mensagens (5 pares user+bot)
+                if len(channel_memory[channel_id]) > 10:
+                    channel_memory[channel_id] = channel_memory[channel_id][-10:]
+                
+                print(f"[MEMORY] Canal {channel_id}: {len(channel_memory[channel_id])} mensagens salvas", flush=True)
+            
+            return bot_response
         else:
             print(f"[GROQ] Error - response inválido: {response}", flush=True)
             return f"{random.choice(SAUDACOES)} Tuve un problemita técnico, intenta de nuevo! 🔧"
@@ -202,14 +231,14 @@ def send_slack_message(channel, text, thread_ts=None):
     return response
 
 
-def process_message(text):
+def process_message(text, channel_id=None):
     """Processa mensagem e retorna resposta via Groq"""
     clean_text = re.sub(r'<@[A-Z0-9]+>', '', text).strip()
     
     if not clean_text:
         return f"{random.choice(SAUDACOES)} Me chamou? Em que posso ajudar? 🌮"
     
-    return call_groq(clean_text)
+    return call_groq(clean_text, channel_id)
 
 
 @app.route("/", methods=["GET"])
@@ -265,7 +294,7 @@ def slack_events():
                 print(f"Ignorando menção em canal não autorizado: {channel}")
                 return jsonify({"ok": True})
             
-            resposta = process_message(text)
+            resposta = process_message(text, channel_id=channel)
             send_slack_message(channel, resposta, thread_ts)
             
             return jsonify({"ok": True})

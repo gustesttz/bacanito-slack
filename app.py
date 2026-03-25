@@ -66,14 +66,18 @@ SYSTEM_PROMPT = load_system_prompt()
 
 print(f"✅ System prompt carregado ({len(SYSTEM_PROMPT)} chars)", flush=True)
 
-# Saudações para respostas rápidas
-SAUDACOES = [
+# Saudações APENAS para fallback em caso de erro técnico
+SAUDACOES_FALLBACK = [
     "Órale! 👋",
     "Qué onda! 😎",
     "Ándale! 🚀",
     "Épale! 🌮",
     "Buenas buenas!",
-    "Arriba! 🎉"
+    "Arriba! 🎉",
+    "Hola hola! 🌵",
+    "Qué tal! 🎊",
+    "Ey ey ey! 🔥",
+    "Bueno pues! 🌮"
 ]
 
 # Memória de conversas por canal (últimas 10 mensagens)
@@ -145,7 +149,7 @@ def call_groq(user_message, channel_id=None):
     print(f"[GROQ] API Key presente: {bool(GROQ_API_KEY)}", flush=True)
     
     if not GROQ_API_KEY:
-        return f"{random.choice(SAUDACOES)} Estou sem conexão com meu cérebro agora, amigo! 🧠❌"
+        return f"{random.choice(SAUDACOES_FALLBACK)} Estou sem conexão com meu cérebro agora, amigo! 🧠❌"
     
     try:
         # Limita o system prompt pra evitar timeout
@@ -201,11 +205,11 @@ def call_groq(user_message, channel_id=None):
             return bot_response
         else:
             print(f"[GROQ] Error - response inválido: {response}", flush=True)
-            return f"{random.choice(SAUDACOES)} Tuve un problemita técnico, intenta de nuevo! 🔧"
+            return f"{random.choice(SAUDACOES_FALLBACK)} Tuve un problemita técnico, intenta de nuevo! 🔧"
     
     except Exception as e:
         print(f"[GROQ] Exception: {e}", flush=True)
-        return f"{random.choice(SAUDACOES)} Algo salió mal, amigo! Intenta de nuevo en un momento. 🌮"
+        return f"{random.choice(SAUDACOES_FALLBACK)} Algo salió mal, amigo! Intenta de nuevo en un momento. 🌮"
 
 
 def send_slack_message(channel, text, thread_ts=None):
@@ -235,8 +239,9 @@ def process_message(text, channel_id=None):
     """Processa mensagem e retorna resposta via Groq"""
     clean_text = re.sub(r'<@[A-Z0-9]+>', '', text).strip()
     
+    # Se só mencionou sem texto, deixa o Groq criar uma saudação criativa
     if not clean_text:
-        return f"{random.choice(SAUDACOES)} Me chamou? Em que posso ajudar? 🌮"
+        clean_text = "Me chamou sem dizer nada. Cumprimente de forma criativa e pergunte como pode ajudar!"
     
     return call_groq(clean_text, channel_id)
 

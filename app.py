@@ -22,6 +22,7 @@ import time
 import re
 import urllib.request
 import urllib.error
+from datetime import datetime
 
 print("🚀 [STARTUP] Imports básicos OK", flush=True)
 
@@ -242,6 +243,36 @@ def process_message(text, channel_id=None):
     # Se só mencionou sem texto, deixa o Groq criar uma saudação criativa
     if not clean_text:
         clean_text = "Me chamou sem dizer nada. Cumprimente de forma criativa e pergunte como pode ajudar!"
+    
+    # SEMPRE adiciona contexto de data (pra qualquer pergunta sobre data ou report)
+    hoje = datetime.now()
+    data_hoje = hoje.strftime("%d/%m/%Y")
+    dia_semana = hoje.strftime("%A")
+    
+    # Tradução dos dias da semana
+    dias_pt = {
+        "Monday": "segunda-feira",
+        "Tuesday": "terça-feira",
+        "Wednesday": "quarta-feira",
+        "Thursday": "quinta-feira",
+        "Friday": "sexta-feira",
+        "Saturday": "sábado",
+        "Sunday": "domingo"
+    }
+    dia_semana_pt = dias_pt.get(dia_semana, dia_semana)
+    
+    # Adiciona contexto de data no prompt
+    contexto_extra = ""
+    if "report" in clean_text.lower():
+        contexto_extra = "\n\nIMPORTANTE: Use a data de hoje como dia de registro automaticamente. Não pergunte a data ao usuário."
+    
+    clean_text = f"""CONTEXTO AUTOMÁTICO:
+- Data de hoje: {data_hoje}
+- Dia da semana: {dia_semana_pt}
+- É terça-feira: {'sim' if dia_semana == 'Tuesday' else 'não'}{contexto_extra}
+
+MENSAGEM DO USUÁRIO:
+{clean_text}"""
     
     return call_groq(clean_text, channel_id)
 

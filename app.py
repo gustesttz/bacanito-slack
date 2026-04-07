@@ -372,11 +372,11 @@ def lembrete_agua():
 # Inicializa o scheduler
 scheduler = BackgroundScheduler(timezone="America/Sao_Paulo")
 
-# Lembretes de água: 10h e 15h (seg a sex)
+# Lembretes de água: 10h10 e 15h (seg a sex)
 scheduler.add_job(
     lembrete_agua,
-    CronTrigger(hour=10, minute=0, day_of_week='mon-fri'),
-    id='lembrete_agua_10h'
+    CronTrigger(hour=10, minute=10, day_of_week='mon-fri'),
+    id='lembrete_agua_10h10'
 )
 scheduler.add_job(
     lembrete_agua,
@@ -385,7 +385,7 @@ scheduler.add_job(
 )
 
 scheduler.start()
-print("✅ Scheduler iniciado - Lembretes de água às 10h e 15h", flush=True)
+print("✅ Scheduler iniciado - Lembretes de água às 10h10 e 15h", flush=True)
 
 # ===== FIM LEMBRETES =====
 

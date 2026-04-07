@@ -87,6 +87,9 @@ SAUDACOES_FALLBACK = [
 # Estrutura: {channel_id: [(role, content), ...]}
 channel_memory = {}
 
+# Inicializa o scheduler (vai ser configurado depois das funções)
+scheduler = None
+
 
 def verify_slack_signature(req):
     """Verifica se a request veio do Slack"""
@@ -307,6 +310,21 @@ def test_lembrete():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/trigger-lembrete-agua", methods=["POST", "GET"])
+def trigger_lembrete_agua():
+    """Trigger manual de lembrete de água (GET ou POST)"""
+    try:
+        lembrete_agua()
+        return jsonify({
+            "status": "ok",
+            "message": "💧 Lembrete de água enviado com sucesso!",
+            "channel": CANAL_AUTORIZADO,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
     """Endpoint para eventos do Slack"""
@@ -386,23 +404,26 @@ def lembrete_agua():
         print(f"[LEMBRETE] Erro ao enviar: {e}", flush=True)
 
 
-# Inicializa o scheduler
-scheduler = BackgroundScheduler(timezone="America/Sao_Paulo")
-
-# Lembretes de água: 10h10 e 15h (seg a sex)
-scheduler.add_job(
-    lembrete_agua,
-    CronTrigger(hour=10, minute=10, day_of_week='mon-fri'),
-    id='lembrete_agua_10h10'
-)
-scheduler.add_job(
-    lembrete_agua,
-    CronTrigger(hour=15, minute=0, day_of_week='mon-fri'),
-    id='lembrete_agua_15h'
-)
-
-scheduler.start()
-print("✅ Scheduler iniciado - Lembretes de água às 10h10 e 15h", flush=True)
+# TODO: Scheduler desabilitado temporariamente (causava falha no healthcheck)
+# Para enviar lembretes, use: POST /trigger-lembrete-agua
+#
+# # Inicializa o scheduler
+# scheduler = BackgroundScheduler(timezone="America/Sao_Paulo")
+# 
+# # Lembretes de água: 10h10 e 15h (seg a sex)
+# scheduler.add_job(
+#     lembrete_agua,
+#     CronTrigger(hour=10, minute=10, day_of_week='mon-fri'),
+#     id='lembrete_agua_10h10'
+# )
+# scheduler.add_job(
+#     lembrete_agua,
+#     CronTrigger(hour=15, minute=0, day_of_week='mon-fri'),
+#     id='lembrete_agua_15h'
+# )
+# 
+# scheduler.start()
+# print("✅ Scheduler iniciado - Lembretes de água às 10h10 e 15h", flush=True)
 
 # ===== FIM LEMBRETES =====
 

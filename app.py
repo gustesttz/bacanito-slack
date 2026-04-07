@@ -23,6 +23,8 @@ import re
 import urllib.request
 import urllib.error
 from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 print("🚀 [STARTUP] Imports básicos OK", flush=True)
 
@@ -341,6 +343,51 @@ def slack_events():
             return jsonify({"ok": True})
     
     return jsonify({"ok": True})
+
+
+# ===== LEMBRETES AUTOMÁTICOS =====
+
+# Mensagens de lembrete de água (variadas pra não enjoar)
+LEMBRETES_AGUA = [
+    "💧 ¡Hora de beber água, mi gente! Hidratação é vida! 🌊",
+    "🚰 Órale, equipo! Pausa pra tomar aquela água fresca. ¡Salud! 💙",
+    "💦 Lembrete automático: Beba água agora! Seu corpo agradece. 🙏",
+    "🌊 ¡Ey ey ey! Hora de hidratar. Toma água, parceiro! 💧",
+    "💧 Pausa estratégica: Água no copo, saúde no corpo! 🎯",
+    "🚰 ¡Arriba! Levanta, toma água e volta renovado! 💪💧",
+    "💦 Lembrete de saúde: H2O é essencial. Beba agora! 🌟",
+    "🌊 ¡Qué tal! Hora de dar aquele gole de água. Vai lá! 🚀"
+]
+
+def lembrete_agua():
+    """Envia lembrete automático de tomar água"""
+    try:
+        mensagem = random.choice(LEMBRETES_AGUA)
+        send_slack_message(CANAL_AUTORIZADO, mensagem)
+        print(f"[LEMBRETE] Água enviado às {datetime.now().strftime('%H:%M')}", flush=True)
+    except Exception as e:
+        print(f"[LEMBRETE] Erro ao enviar: {e}", flush=True)
+
+
+# Inicializa o scheduler
+scheduler = BackgroundScheduler(timezone="America/Sao_Paulo")
+
+# Lembretes de água: 10h e 15h (seg a sex)
+scheduler.add_job(
+    lembrete_agua,
+    CronTrigger(hour=10, minute=0, day_of_week='mon-fri'),
+    id='lembrete_agua_10h'
+)
+scheduler.add_job(
+    lembrete_agua,
+    CronTrigger(hour=15, minute=0, day_of_week='mon-fri'),
+    id='lembrete_agua_15h'
+)
+
+scheduler.start()
+print("✅ Scheduler iniciado - Lembretes de água às 10h e 15h", flush=True)
+
+# ===== FIM LEMBRETES =====
 
 
 print("✅ Rotas registradas", flush=True)

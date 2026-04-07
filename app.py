@@ -23,8 +23,8 @@ import re
 import urllib.request
 import urllib.error
 from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+# from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.triggers.cron import CronTrigger
 
 print("🚀 [STARTUP] Imports básicos OK", flush=True)
 

@@ -282,12 +282,29 @@ MENSAGEM DO USUÁRIO:
 @app.route("/", methods=["GET"])
 def health():
     """Health check endpoint"""
+    jobs = []
+    if scheduler and scheduler.running:
+        jobs = [{"id": job.id, "next_run": str(job.next_run_time)} for job in scheduler.get_jobs()]
+    
     return jsonify({
         "status": "ok",
         "bot": "Bacanito 🌮",
         "message": "Órale! El bot está funcionando!",
-        "llm": "Groq (Llama 3.3 70B)" if GROQ_API_KEY else "disabled"
+        "llm": "Groq (Llama 3.3 70B)" if GROQ_API_KEY else "disabled",
+        "scheduler_running": scheduler.running if scheduler else False,
+        "scheduled_jobs": jobs,
+        "current_time_brasilia": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
+
+
+@app.route("/test-lembrete", methods=["POST"])
+def test_lembrete():
+    """Endpoint pra testar lembrete manualmente"""
+    try:
+        lembrete_agua()
+        return jsonify({"status": "ok", "message": "Lembrete enviado!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/slack/events", methods=["POST"])

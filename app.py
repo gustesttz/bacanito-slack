@@ -184,8 +184,7 @@ def call_groq(user_message, channel_id=None):
             },
             headers={
                 "Authorization": f"Bearer {GROQ_API_KEY}",
-                "User-Agent": "Bacanitro/1.0",
-                "Accept": "application/json"
+                "Content-Type": "application/json"
             }
         )
         

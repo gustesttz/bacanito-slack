@@ -87,6 +87,11 @@ SAUDACOES_FALLBACK = [
 # Estrutura: {channel_id: [(role, content), ...]}
 channel_memory = {}
 
+# Cache de eventos processados (evita duplicação)
+# Estrutura: {event_id: timestamp}
+processed_events = {}
+MAX_CACHE_SIZE = 100
+
 # Inicializa o scheduler (vai ser configurado depois das funções)
 scheduler = None
 
@@ -343,6 +348,20 @@ def slack_events():
     if data.get("type") == "event_callback":
         event_data = data.get("event", {})
         event_type = event_data.get("type")
+        event_id = data.get("event_id")
+        
+        # ✅ ANTI-DUPLICAÇÃO: Verifica se já processou este evento
+        if event_id and event_id in processed_events:
+            print(f"⚠️ Evento {event_id} já processado. Ignorando duplicata.")
+            return jsonify({"ok": True})
+        
+        # Registra evento como processado
+        if event_id:
+            processed_events[event_id] = time.time()
+            # Limpa cache se ficar muito grande
+            if len(processed_events) > MAX_CACHE_SIZE:
+                oldest = min(processed_events.items(), key=lambda x: x[1])
+                del processed_events[oldest[0]]
         
         # Ignora mensagens do próprio bot
         if event_data.get("bot_id"):

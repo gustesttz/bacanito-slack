@@ -14,5 +14,5 @@ jobs:
     steps:
       - name: 💧 Trigger lembrete de água
         run: |
-          curl -X GET https://web-production-7f22f.up.railway.app/trigger-lembrete-agua
+          curl -X GET https://bacanito-slack.onrender.com/trigger-lembrete-agua
           echo "✅ Lembrete enviado com sucesso!"
